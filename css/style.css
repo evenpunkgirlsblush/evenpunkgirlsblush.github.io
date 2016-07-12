@@ -1,0 +1,17 @@
+html,
+body {
+    margin: 0;
+    overflow: auto;
+	font-size: 100% !important;
+    height: 100%;
+}
+
+/* Scale canvas with resize attribute to full size */
+canvas[resize] {
+    width: 100vw;
+    height: 56.25vw;
+}
+
+a {
+	color: #888888;
+}
