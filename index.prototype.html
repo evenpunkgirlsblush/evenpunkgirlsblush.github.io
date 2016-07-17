@@ -1,0 +1,1120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="copyright" content="Colin Cohen" />
+	<meta name="description" content="A pogo-dancing game celebrating life." />
+	<title>Even Punk Girls Blush: The Game</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+
+	<link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="dist/jsmodal-dark.css">
+	<link rel="icon" type="image/png" href="images/favicon.ico">
+	<script type="text/javascript" src="levels.js"></script>
+	<script type="text/javascript" src="dist/paper-full.min.js"></script>
+	<script type="text/javascript" src="dist/jsmodal-1.0d.min.js"></script>
+	<script type="text/paperscript" canvas="canvas">
+	//<![CDATA[
+	"use strict";
+	
+	var loadingText;
+/*	var blushedText;
+	var fadedText;*/
+	var paused = true;
+	var faded = false;
+	var fadeCount;
+	var hit = false;
+	var hitIndex;
+	var hitCount;
+	var hitFrame;
+	var hitMask;
+	var hitGroup;
+	var splash;
+	var brush;
+	var brushes;
+	var brushStack = [];
+	var brushRow = [];
+	var aniBrush = false;
+	var brushPlaced;
+	var increment = 1;
+	var WHITE = new Color('white');
+	var color = WHITE;
+	var pivot;
+	var strokes;
+	var row = 1;
+	var decay = 0;
+	var left;
+	var right;
+	var backdrop;
+	var actors;
+	var ui;
+	var uiBar;
+	var levelControl;
+	var levelText;
+	var playControl;
+	var pauseControl;
+	var musicOnControl;
+	var musicOffControl;
+	var infoControl;
+	var recycleControl;
+	var timeText;
+	var scoreText;
+	var wall;
+	var options = {expandShapes: true};
+	var heart;
+	var heartSolid;
+	var heartGroup;
+	var heartBeat;
+	var heartRate;
+	var brokenCount;
+//	var heartBox;
+	var BACK_OPACITY = 0.05;
+	var dust = [];
+	var dustIndex;
+	var dustScale;
+	var dustFire;
+	var dustPosition;
+	var MAX_POGO = 16;
+	var POGO_WIDTH = 735;
+	var POGO_HEIGHT = 980;
+	var pogo = [];
+	var pogoMasks = [];
+	var pogoGroup = [];
+	var pogoActive = MAX_POGO;
+	var pogoIndex;
+	var pogoDownloaded = 0;
+	var pogoScale;
+	var pogoRepeat = 0;
+	var thrust = 0;
+	var pushed = 0;
+	var bounce = 0;
+	var drag;
+	var children;
+	var text;
+	var helpme;
+	var i;
+	var j;
+	var level = JSON.parse(localStorage.getItem('level'));
+	if (level === null) {
+		level = 1;
+	}
+	
+	// read level data from levels.js
+	var levels = levelGen();
+	
+	var canvas = document.getElementById("canvas");
+	var cHeight = project.view.bounds.height;
+	var fontSize = parseFloat(window.getComputedStyle(canvas, null).getPropertyValue('font-size')) + 1;
+	
+	var lastFrame = 0;
+	var start = new Date();
+	var lastPushed = start.getTime();
+	
+	var score = JSON.parse(localStorage.getItem('score'));
+	if (score === null) {
+		score = 0;
+	}
+	var prevScore = score;
+	
+	var isAudio = JSON.parse(localStorage.getItem('isAudio'));
+	if (isAudio === null) {
+		isAudio = true;
+	}
+	// soundtrack
+	var gameAudio = new Audio('audio/Even Punk Girls Blush.mp3');
+	gameAudio.onloadeddata = function() {
+		gameAudio.currentTime = 60 * (level - 1);
+	}
+	// sounds
+	var hitAudio = new Audio('audio/hit.wav');
+	var fadeAudio = new Audio('audio/fade.wav');
+	
+	var SCREENSHOT = false;
+	
+	// status text
+	loadingText = new PointText(project.view.center);
+	loadingText.fillColor = 'white';
+	loadingText.content = 'loading . . .';
+	loadingText.fontSize = '1.25em';
+	loadingText.shadowColor = 'white';
+	loadingText.shadowBlur = 3.33;
+	
+/*	blushedText = new PointText(new Point(project.view.bounds.width / 16, project.view.bounds.height / 8));
+	blushedText.fillColor = 'white';
+	blushedText.justification = 'left';
+	blushedText.fontWeight = 'bold';
+	blushedText.content = "***you've been blushed***";
+	blushedText.fontSize = '1.5em';
+	blushedText.shadowColor = 'white';
+	blushedText.shadowBlur = 4;
+	blushedText.visible = false;
+	
+	fadedText = blushedText.clone();
+	fadedText.content = "***you've faded away***";*/
+	
+	// load svgs
+	project.importSVG('images/splash.svg', function(item) {
+		splash = item;
+		splash.shadowColor = 'white';
+		splash.shadowBlur = 3.33;
+		splash.bounds.width = project.view.bounds.width;
+		splash.bounds.height = project.view.bounds.height * 0.85;
+		splash.pivot = item.bounds.topCenter;
+		splash.position = project.view.bounds.topCenter;
+		splash.visible = false;
+	});
+	
+	// paint stroke
+	strokes = new Layer();
+	strokes.name = 'strokes';
+	project.importSVG('images/brush.svg', function(item) {
+		brush = item;
+		brush.visible = false;
+	});
+	
+	// UI
+	ui = new Layer();
+	ui.name = 'ui';
+	uiBar = new Path.Rectangle(new Rectangle(project.view.bounds.left + 25, 
+												project.view.bounds.bottom - (project.view.bounds.height * 0.15),
+												project.view.bounds.width - 50,
+												project.view.bounds.height * 0.15));
+	uiBar.fillColor = 'black';
+	
+	project.importSVG('images/blank.svg', function(item) {
+		levelControl = item;
+		levelControl.shadowColor = 'white';
+		levelControl.shadowBlur = 5;
+		levelControl.visible = false;
+		levelControl.bounds.width = project.view.bounds.height * 0.12;
+		levelControl.bounds.height = project.view.bounds.height * 0.12;
+		levelControl.position = new Point(project.view.center.x - levelControl.bounds.width - 10, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		ui.addChild(levelControl);
+		levelText = new PointText(levelControl.bounds.center);
+		levelText.justification = 'center';
+		levelText.fillColor = 'black';
+		levelText.content = level;
+		levelText.fontWeight = 'bold';
+		levelText.fontSize = levelControl.bounds.height / 2;
+		levelText.position.y += levelText.fontSize / 3;
+		ui.addChild(levelText);
+	});
+	
+	project.importSVG('images/play.svg', function(item) {
+		playControl = item;
+		playControl.shadowColor = 'white';
+		playControl.shadowBlur = 5;
+		playControl.visible = false;
+		playControl.bounds.width = project.view.bounds.height * 0.12;
+		playControl.bounds.height = project.view.bounds.height * 0.12;
+		playControl.position = new Point(project.view.center.x, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		playControl.on('click', function() {
+			unpause();
+		});
+		ui.addChild(playControl);
+	});
+	project.importSVG('images/pause.svg', function(item) {
+		pauseControl = item;
+		pauseControl.shadowColor = 'white';
+		pauseControl.shadowBlur = 5;
+		pauseControl.visible = false;
+		pauseControl.bounds.width = project.view.bounds.height * 0.12;
+		pauseControl.bounds.height = project.view.bounds.height * 0.12;
+		pauseControl.position = new Point(project.view.center.x, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		pauseControl.onClick = function(event) {
+			pause();
+		}
+		ui.addChild(pauseControl);
+	});
+	
+	project.importSVG('images/music on.svg', function(item) {
+		musicOnControl = item;
+		musicOnControl.shadowColor = 'white';
+		musicOnControl.shadowBlur = 5;
+		musicOnControl.visible = false;
+		musicOnControl.bounds.width = project.view.bounds.height * 0.12;
+		musicOnControl.bounds.height = project.view.bounds.height * 0.12;
+		musicOnControl.position = new Point(project.view.center.x + musicOnControl.bounds.width + 10, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		musicOnControl.on('click', function() {
+			musicOnControl.visible = false;
+			musicOffControl.visible = true;
+			isAudio = false;
+			localStorage.setItem('isAudio', JSON.stringify(isAudio));
+			audioStop(gameAudio);
+		});
+		ui.addChild(musicOnControl);
+	});
+	project.importSVG('images/music off.svg', function(item) {
+		musicOffControl = item;
+		musicOffControl.shadowColor = 'white';
+		musicOffControl.shadowBlur = 5;
+		musicOffControl.visible = false;
+		musicOffControl.bounds.width = project.view.bounds.height * 0.12;
+		musicOffControl.bounds.height = project.view.bounds.height * 0.12;
+		musicOffControl.position = new Point(project.view.center.x + musicOffControl.bounds.width + 10, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		musicOffControl.on('click', function() {
+			musicOnControl.visible = true;
+			musicOffControl.visible = false;
+			isAudio = true;
+			gameAudio.currentTime = (60 * (level - 1)) + (60 - timeText.content);
+			if (!paused) {
+				gameAudio.play();
+			}
+			localStorage.setItem('isAudio', JSON.stringify(isAudio));
+		});
+		ui.addChild(musicOffControl);
+	});
+	
+	project.importSVG('images/recycle.svg', function(item) {
+		recycleControl = item;
+		recycleControl.shadowColor = 'white';
+		recycleControl.shadowBlur = 5;
+		recycleControl.visible = false;
+		recycleControl.bounds.width = project.view.bounds.height * 0.12;
+		recycleControl.bounds.height = project.view.bounds.height * 0.12;
+		recycleControl.position = new Point(project.view.center.x - (recycleControl.bounds.width * 2) - 20, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		recycleControl.on('click', function() {
+			pause();
+			removeHearts();
+			removeDust();
+			levelChange(1);
+			gameAudio.currentTime = 60 * (level - 1);
+			levelInit();
+			scoreChange(0);
+			prevScore = 0;
+			localStorage.setItem('score', JSON.stringify(score));
+			timeText.content = 60;
+			pogoInit();
+		});
+		ui.addChild(recycleControl);
+	});
+	
+	project.importSVG('images/info.svg', function(item) {
+		infoControl = item;
+		infoControl = item;
+		infoControl.shadowColor = 'white';
+		infoControl.shadowBlur = 5;
+		infoControl.visible = false;
+		infoControl.bounds.width = project.view.bounds.height * 0.12;
+		infoControl.bounds.height = project.view.bounds.height * 0.12;
+		infoControl.position = new Point(project.view.bounds.center.x + (infoControl.bounds.width * 2) + 20, 
+											project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		infoControl.on('click', function() {
+			pause();
+			Modal.open({ajaxContent: 'info.html',
+						width: '75%',
+						height: '75%',
+						});
+		});
+		ui.addChild(infoControl);
+	});
+	
+	// game text
+	timeText = new PointText(uiBar.bounds.leftCenter);
+	timeText.justification = 'left';
+	timeText.fillColor = 'white';
+	timeText.content = 60;
+	timeText.fontSize = uiBar.bounds.height / 2;
+	timeText.position.y += timeText.fontSize / 2;
+	timeText.shadowColor = 'white';
+	timeText.shadowBlur = 3.33;
+	timeText.visible = false;
+	ui.addChild(timeText);
+		
+	scoreText = new PointText(uiBar.bounds.rightCenter);
+	scoreText.justification = 'right';
+	scoreText.fillColor = 'white';
+	scoreText.content = 0;
+	scoreText.fontSize = uiBar.bounds.height / 2;
+	scoreText.position.y += scoreText.fontSize / 2;
+	scoreText.shadowColor = 'white';
+	scoreText.shadowBlur = 3.33;
+	scoreText.visible = false;
+	ui.addChild(scoreText);
+		
+	backdrop = new Layer();
+	backdrop.name = 'backdrop';
+	backdrop.sendToBack();
+
+	project.importSVG('images/wall.svg', function(item) {
+		wall = item;
+		wall.bounds.width = project.view.bounds.width;
+		wall.bounds.height = project.view.bounds.height;
+		wall.children[0].opacity = BACK_OPACITY;
+		wall.children[1].opacity = BACK_OPACITY;
+		wall.children[2].opacity = BACK_OPACITY;
+		wall.children[5].opacity = BACK_OPACITY;
+		wall.children[6].opacity = BACK_OPACITY;
+	});
+		
+/*	project.importSVG('images/floor.svg', function(item) {
+		item.bounds.width = canvas.width * 2;
+		item.bounds.height = canvas.height * 0.85;
+		item.pivot = item.bounds.topCenter;
+		item.opacity = 0.15;
+		item.position = project.view.bounds.topCenter;
+	});*/
+	
+	actors = new Layer();
+	actors.name = 'actors';
+		
+	// hearts & dust
+	options.onLoad = function(item) {
+		item.pivot = item.bounds.center;
+		heart = item;
+		heart.visible = false;
+		heart.children[2].opacity = 0;
+	};
+	project.importSVG('images/heart.svg', options);
+	project.importSVG('images/heart.solid.svg', function(item) {
+		item.fillColor = new Color(1, 0, 0, BACK_OPACITY);
+		item.strokeColor = new Color(1, 0, 0, 0.2);
+		item.strokeWidth = 0.5;
+		heartSolid = new Symbol(item);
+	});
+	
+	for (i = 1; i <= 11; i++) {
+		project.importSVG('images/dust' + ('0000' + i).slice(-4) + '.svg', function(item) {
+			dustIndex = parseInt(item.name.substr(2));
+			dust[dustIndex] = item;
+			dust[dustIndex].children[1].fillColor = 'black';
+			dustScale = (project.view.bounds.width / dust[dustIndex].bounds.width) / 20;
+			dust[dustIndex].scale(dustScale, dustScale);
+			dust[dustIndex].visible = false;
+			dust[dustIndex].position = project.view.bounds.topCenter;
+		});
+	}
+	
+	// pogo dancer
+	for (i = 1; i <= MAX_POGO; i++) {
+		project.importSVG('images/pogo' + ('0000' + i).slice(-4) + '.svg', function(item) {
+			pogoDownloaded++;
+			pogoIndex = parseInt(item.name.substr(2));
+			pogo[pogoIndex] = item;
+			children = pogo[pogoIndex].children;
+			children[children.length - 1].visible = false;
+			pogoMasks[pogoIndex] = new Path.Rectangle(new Rectangle(pogo[pogoIndex].bounds.center.x - 367.5, 
+											pogo[pogoIndex].bounds.bottom - POGO_HEIGHT,
+											POGO_WIDTH, POGO_HEIGHT));
+			pogoGroup[pogoIndex] = new Group(pogoMasks[pogoIndex], pogo[pogoIndex]);
+			pogoGroup[pogoIndex].visible = false;
+			pogoGroup[pogoIndex].clipped = true;
+			pogoGroup[pogoIndex].pivot = pogoMasks[pogoIndex].bounds.topCenter;
+			pogoScale = (project.view.bounds.height * 0.85) / POGO_HEIGHT;
+			pogoGroup[pogoIndex].scale(pogoScale, pogoScale);
+			pogoGroup[pogoIndex].position = project.view.bounds.topCenter;
+			// when fully loaded
+			if (pogoDownloaded == MAX_POGO) {
+				while (levelControl === undefined);
+				while (playControl === undefined);
+				while (musicOnControl === undefined);
+				while (infoControl === undefined);
+				while (recycleControl === undefined);
+				loadingText.visible = false;
+				levelControl.visible = true;
+				if (isAudio) {
+					musicOnControl.visible = true;
+				} else {
+					musicOffControl.visible = true;
+				}
+				recycleControl.visible = true;
+				infoControl.visible = true;
+				timeText.visible = true;
+				scoreText.content = formatScore();
+				scoreText.visible = true;
+				playControl.visible = true;
+				ui.bringToFront();
+	
+				levelInit();
+				
+				splash.visible = true;
+				splash.bringToFront();
+			}
+		});
+	}
+	project.importSVG('images/hit.svg', function(item) {
+		hitFrame = item;
+		children = hitFrame.children;
+		children[children.length - 1].visible = false;
+		hitMask = new Path.Rectangle(new Rectangle(hitFrame.bounds.center.x - 367.5, 
+									hitFrame.bounds.bottom - POGO_HEIGHT,
+									POGO_WIDTH, POGO_HEIGHT));
+		hitGroup = new Group(hitMask, hitFrame);
+		hitGroup.visible = false;
+		hitGroup.clipped = true;
+		hitGroup.pivot = hitMask.bounds.topCenter;
+		hitGroup.scale(pogoScale, pogoScale);
+	});
+	
+	// utility functions
+	function randomRange(max, min) {
+		return Math.random() * (max - min) + min;
+	}
+	
+	function formatScore() {
+		return score.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+	}
+	
+	function scoreChange(newScore) {
+		score = newScore;
+		scoreText.content = formatScore();
+	}
+	
+	function setWalls(r, l) {
+		right = r;
+		left = l;
+		if (right == 0) {
+			wall.children[1].opacity = 0.2;
+			wall.children[6].opacity = 0.2;
+		} else {
+			wall.children[1].opacity = BACK_OPACITY;
+			wall.children[6].opacity = BACK_OPACITY;
+		}
+		if (left == 0) {
+			wall.children[2].opacity = 0.2;
+			wall.children[5].opacity = 0.2;
+		} else {
+			wall.children[2].opacity = BACK_OPACITY;
+			wall.children[5].opacity = BACK_OPACITY;
+		}
+	}
+	
+	// new level
+	function levelInit() {
+		var i;
+		var heartSize = project.view.bounds.width / 90;
+		var rows = (level < 5 ? 4 : (level < 8 ? 5 : 6));
+		var rowHeight = heartSize * 4.5;
+		var rowStart = (0.345 * project.view.bounds.height) - ((rows * rowHeight) / 2);
+		var heartScale;
+//		var heartBoxRect = new Rectangle(new Point(0.225 * project.view.bounds.width, rowStart - (heartSize * 2)), 
+//											new Point(0.775 * project.view.bounds.width, rowStart + ((rows - 1) * rowHeight) + (heartSize * 2)));
+
+		brokenCount = 0;
+		actors.activate();
+//		heartBox = new Path.Rectangle(heartBoxRect, new Size(5, 5));
+//		heartBox.strokeColor = 'black';
+//		heartBox.opacity = BACK_OPACITY;
+		heartGroup = new Group();
+//		heartGroup.addChild(heartBox);
+		for (i = 0; i < levels[level-1].length; i++) {
+			levels[level-1][i].emitted = false;
+			levels[level-1][i].heart = new PlacedSymbol(heartSolid);
+			levels[level-1][i].heart.bounds.width = heartSize;
+			levels[level-1][i].heart.bounds.height = heartSize;
+			levels[level-1][i].heart.rotation = randomRange(30, -30);
+			levels[level-1][i].heart.position = new Point(levels[level-1][i].x * project.view.bounds.width, 
+															rowStart + (levels[level-1][i].row - 1) * rowHeight);
+			heartScale = randomRange(1.1, 0.9);
+			levels[level-1][i].heart.scale(heartScale, heartScale);
+			heartGroup.addChild(levels[level-1][i].heart);
+		}
+		heartGroup.rotate(-1.5);
+	}
+	
+	function levelChange(newLevel) {
+		level = newLevel;
+		localStorage.setItem('level', JSON.stringify(level));
+		levelText.content = level;
+		decay = 0;
+	}
+	
+	function pogoInit() {
+		var i;
+		
+		for (i = 1; i <= MAX_POGO; i++) {
+			pogoGroup[i].position = project.view.bounds.topCenter;
+		}
+	}
+	
+	// remove hearts & dust on new level
+	function removeHearts() {
+		var i;
+		
+		heartGroup.removeChildren();
+//		heartBox.remove();
+		for (i = 0; i < levels[level-1].length; i++) {
+			if (levels[level-1][i].heart != null) {
+				levels[level-1][i].heart.remove();
+				levels[level-1][i].heart = null;
+			}
+		}
+	}
+	
+	function removeDust() {
+		var i;
+		
+		for (i = 1; i <= 11; i++) {
+			dust[i].visible = false;
+		}
+	}
+	
+	// collision detection
+	function isCollision(instance) {
+		var i;
+		var j;
+		var curves = instance.children[0].children[0].children[0].curves;
+		var curve1;
+		var curve2;
+		var hitOptions = {segments: true, fill: true, tolerance: 5};
+		
+		for (i = 0; i < curves.length; i++) {
+			// subdivide curve for increased accuracy
+			curve1 = curves[i].clone();
+			curve2 = curve1.divide();
+			// check points of the heart against dancer
+			for (j = 0; j < pogo[pogoActive].children.length - 1; j++) {
+				if ((pogo[pogoActive].children[j].opacity == 1) &&
+					(pogo[pogoActive].children[j].hitTest(curve1.point1, hitOptions) != null || 
+					pogo[pogoActive].children[j].hitTest(curve2.point1, hitOptions) != null)) {
+					return true;
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+/*	function gameOver(message) {
+		pause();
+		if (isAudio) {
+			gameAudio.pause();
+			gameAudio.currentTime = 60 * (level - 1);
+		}
+		timeText.content = 60;
+		removeHearts();
+		removeDust();
+		scoreChange(prevScore);
+		message.visible = true;
+		pogoInit();
+		levelInit();
+	}*/
+	
+	function reset() {
+		if (isAudio) {
+			gameAudio.currentTime = 60 * (level - 1);
+		}
+		timeText.content = 60;
+		removeHearts();
+		removeDust();
+		scoreChange(prevScore);
+		pogoInit();
+		levelInit();
+	}
+	
+	function levelOver() {
+		pause();
+		reset();
+		unpause();
+	}
+	
+	function onMouseDown(event) {
+		pivot = event.point;
+		
+		if (!event.point.isInside(pogoGroup[pogoActive].bounds)) {
+			drag = false;
+		} else {
+			drag = true;
+		}
+	}
+	
+	function onMouseUp(event) {
+		pushed = 0;
+	}
+	
+	function onMouseDrag(event) {
+		var date = new Date();
+		
+		if (!drag) {
+			pushed = 0;
+			return;
+		}
+		
+		lastPushed = date.getTime();
+
+		// user pushed dancer
+		if (event.point.x > pivot.x) {
+			pushed = 1.5;
+		} else {
+			pushed = -1.5;
+		}
+		pivot = event.point;
+	}
+	
+	function onFrame(event) {
+		if (paused) {
+			return;
+		}
+		if (hit) {
+//			gameOver(blushedText);
+			if (hitCount >= 24) {
+				levelOver();
+				hitGroup.visible = false;
+				hitGroup.rotate(2);
+				hit = false;
+			} else {
+				if (!hitGroup.visible) {
+					if (isAudio) {
+						gameAudio.pause();
+						hitAudio.play();
+					}
+					hitGroup.visible = true;
+					pogoGroup[pogoActive].visible = false;
+					hitGroup.position = pogoGroup[pogoActive].position;
+				}
+				if (hitCount == 3) {
+					hitGroup.rotate(-5);
+				} else if (hitCount == 5){
+					hitGroup.rotate(3);
+				}
+				hitCount++;
+			}
+			return;
+		}
+		if (faded) {
+			if (fadeCount >= 24) {
+				levelOver();
+				faded = false;
+			} else {
+				fadeCount++;
+			}
+			return;
+		}
+		
+		var date =  new Date();
+		var current = date.getTime();
+		var oldHeart;
+		var stroke;
+		var strokeIndex;
+		var i;
+		
+		// turn on for fps
+//		console.log(1000 / (current - lastFrame));
+		// limit fps based on level
+		if (current - lastFrame < 33.3 - (level - 1)) {
+			return;
+		}
+		lastFrame = current;
+		
+		// set time
+		timeText.content = Math.round(60 - ((current - start) / 1000));
+		if (timeText.content <= 0) {
+			if (brokenCount > 0) {
+				levelOver();
+			} else {
+				start = date;
+				timeText.content = 60;
+				scoreChange(score + (10000 * level));
+				localStorage.setItem('score', JSON.stringify(score));
+				prevScore = score;
+				removeHearts();
+				removeDust();
+				if (level < levels.length) {
+					levelChange(level + 1);
+				} else {
+					levelChange(1);
+				}
+				levelInit();
+			}
+		}
+
+		// check if screen is black
+		if (color.red <= 0.16 && color.green <= 0.16 && color.blue <= 0.16) {
+//			gameOver(fadedText);
+			faded = true;
+			if (isAudio) {
+				gameAudio.pause();
+				fadeAudio.play();
+			}
+			fadeCount = 0;
+			clearStrokes();
+			removeHearts();
+			removeDust();
+			color = WHITE;
+			
+			return;
+		}
+		
+		actors.activate();
+		// advance dancer one frame
+		pogoGroup[pogoActive].visible = false;
+		if (pogoActive == MAX_POGO) {
+			pogoActive = 1;
+		} else if ((pogoActive >= MAX_POGO * 0.25 && pogoActive <= (MAX_POGO * 0.25) + 2 ||
+					pogoActive >= MAX_POGO * 0.75 && pogoActive <= (MAX_POGO * 0.75) + 2)
+					&& pogoRepeat == 0) {
+			pogoRepeat = 1;
+		} else {
+			pogoRepeat = 0;
+			pogoActive++;
+		}
+		pogoGroup[pogoActive].visible = true;
+		
+		// move dancer based on user interaction
+		if (pogoActive == 2 && bounce == 0) {
+			thrust = project.view.bounds.width * randomRange(0.005, 0.004) * (pushed == 0 ? -1 : pushed);
+		} else if (pogoActive == (MAX_POGO / 2) + 2 && bounce == 0) {
+			thrust = project.view.bounds.width * randomRange(0.005, 0.004) * (pushed == 0 ? 1 : pushed);
+		}
+		if (pogoGroup[1].position.x + thrust >= project.view.bounds.width - pogoGroup[1].bounds.width / 2) {
+			decay *= right;
+			if (right == 0) {
+				thrust *= -3.5;
+				bounce = 1;
+				scoreChange(score + (500 * level));
+				setWalls(1, 0);
+			} else {
+				thrust = 0;
+			}
+		} else if (pogoGroup[1].position.x + thrust <= pogoGroup[1].bounds.width / 2) {
+			decay *= left;
+			if (left == 0) {
+				thrust *= -3.5;
+				bounce = 1;
+				scoreChange(score + (500 * level));
+				setWalls(0, 1);
+			} else {
+				thrust = 0;
+			}
+		}
+		for (i = 1; i <= MAX_POGO; i++) {
+			pogoGroup[i].position.x += thrust;
+		}
+		if (bounce > MAX_POGO / 2) {
+			bounce = 0;
+			thrust = 0;
+		} else if (bounce > 0) {
+			bounce++;
+		}
+		
+		// emit hearts & dust
+		if (heartBeat == 12) {
+			if (levels[level-1][i].broken && levels[level-1][i].emitted && levels[level-1][i].heart.visible) {
+				heartRate = -0.5;
+			} else {
+				heartRate = -0.33;
+			}
+		} else if (heartBeat == 0) {
+			if (levels[level-1][i].broken && levels[level-1][i].emitted && levels[level-1][i].heart.visible) {
+				heartRate = 0.5;
+			} else {
+				heartRate = 0.33;
+			}
+		}
+		if (heartRate > 0 && heartBeat < 12) {
+			heartBeat++;
+		} else if (heartRate < 0 && heartBeat > 0) {
+			heartBeat--;
+		}
+		for (i = 0; i < levels[level-1].length; i++) {
+			levels[level-1][i].heart.bounds.width += heartRate;
+			levels[level-1][i].heart.bounds.height += heartRate;
+			
+			if (levels[level-1][i].time * 1000 < current - start.getTime() && !levels[level-1][i].emitted) {
+				levels[level-1][i].emitted = true;
+				oldHeart = levels[level-1][i].heart;
+				levels[level-1][i].heart = heart.clone();
+				levels[level-1][i].heart.bounds = oldHeart.bounds;
+				levels[level-1][i].heart.position = oldHeart.position;
+				oldHeart.remove();
+				levels[level-1][i].heart.visible = true;
+				if (levels[level-1][i].broken) {
+					levels[level-1][i].heart.children[2].opacity = 1;
+					levels[level-1][i].heart.scale(2, 2);
+					levels[level-1][i].heart.collected = false;
+					brokenCount++;
+				} else {
+					levels[level-1][i].heart.scaleFactor = 0.001;
+				}
+				
+				dustFire = 1;
+				dustPosition = levels[level-1][i].heart.position;
+			}
+			if (!levels[level-1][i].broken && levels[level-1][i].emitted && levels[level-1][i].heart.visible) {
+				levels[level-1][i].heart.scale(1 + levels[level-1][i].heart.scaleFactor, 1 + levels[level-1][i].heart.scaleFactor);
+				levels[level-1][i].heart.scaleFactor *= 1.075; 
+				levels[level-1][i].heart.rotate(19);
+
+				// check for collision with non-broken hearts
+				if (levels[level-1][i].heart.bounds.width > project.view.bounds.width / 4) {
+					if (isCollision(levels[level-1][i].heart)) {
+						hit = true;
+						hitIndex = i;
+						hitCount = 0;
+						return;
+					} else {
+						levels[level-1][i].heart.visible = false;
+						scoreChange(score + (100 * level));
+					}
+				}
+			} else if (levels[level-1][i].broken && levels[level-1][i].emitted && levels[level-1][i].heart.visible) {
+				// check for collection of broken hearts
+				if (levels[level-1][i].heart.collected) {
+					levels[level-1][i].heart.scale(0.85, 0.85);
+					if (levels[level-1][i].heart.bounds.width < project.view.bounds.width / 200) {
+						levels[level-1][i].heart.visible = false;
+					}
+				} else if (levels[level-1][i].heart.bounds.contains(new Point(pogoGroup[pogoActive].bounds.center.x, 
+																levels[level-1][i].heart.bounds.center.y))) {
+					levels[level-1][i].heart.collected = true;
+					scoreChange(score + (100 * level));
+					brokenCount--;
+				}
+			}
+		}
+		if (dustFire > 0) {
+			if (dustFire > 11) {
+				dust[dustFire-1].visible = false;
+				dustFire = 0;
+			} else {
+				dust[dustFire].visible = true;
+				dust[dustFire].position = dustPosition;
+				dustFire++;
+				if (dustFire > 2) {
+					dust[dustFire-2].visible = false;
+				}
+			}
+		}
+/*		for (i = 0; i < levels[level-1].length; i++) {
+			if (levels[level-1][i].time * 1000 < current - start.getTime() && !levels[level-1][i].emitted) {
+				levels[level-1][i].emitted = true;
+				levels[level-1][i].heart = heart.clone();
+				levels[level-1][i].heart.visible = true;
+				levels[level-1][i].heart.bounds.width = project.view.bounds.width / 100;
+				levels[level-1][i].heart.bounds.height = project.view.bounds.width / 100;
+				levels[level-1][i].heart.scaleFactor = 0.0001;
+				levels[level-1][i].heart.position = new Point(levels[level-1][i].x * project.view.bounds.width, randomRange(project.view.bounds.height * 0.75, project.view.bounds.height * 0.25));
+				
+				dustFire = 1;
+				dustPosition = levels[level-1][i].heart.position;
+			}
+			if (levels[level-1][i].heart != null && levels[level-1][i].heart.visible) {
+				levels[level-1][i].heart.scale(1 + levels[level-1][i].heart.scaleFactor, 1 + levels[level-1][i].heart.scaleFactor);
+				levels[level-1][i].heart.scaleFactor *= 1.075; 
+				levels[level-1][i].heart.rotate(16.75);
+//				hearts[i].fillColor -= 0.025;
+				
+//				if (levels[level-1][i].heart.bounds.width > project.view.bounds.width / 4.5) {
+//					levels[level-1][i].heart.children[2].opacity = 1;
+//				}
+
+				// check for collision
+				if (levels[level-1][i].heart.bounds.width > project.view.bounds.width / 4) {
+					if (isCollision(levels[level-1][i].heart)) {
+						hit = true;
+						hitIndex = i;
+						hitCount = 0;
+						return;
+					} else {
+						levels[level-1][i].heart.visible = false;
+						scoreChange(score + (100 * level));
+					}
+				}
+			}
+		}*/
+		
+		strokes.activate();
+		// animate brush strokes
+		if (!aniBrush) {
+			aniBrush = true;
+			if (brushStack.length == 0) {
+				brushPlaced = brush.clone();
+			} else {
+				brushPlaced = brushStack.pop();
+			}
+			brushPlaced.bounds.width = project.view.bounds.width / 10;
+			brushPlaced.bounds.height = (project.view.bounds.height / 4) * 1.45;
+			brushPlaced.bounds.left = 0;
+			brushPlaced.bounds.y = ((row - 1) * (project.view.bounds.height / 4)) - brushPlaced.bounds.height / 10;
+			brushPlaced.visible = true;
+			decay += 0.01 * (1 + (level / 10));
+			color = new Color(randomRange(1.0, 0.9) - decay, randomRange(1.0, 0.9) - decay, 
+								randomRange(1.0, 0.9) - decay);
+			brushPlaced.fillColor = color;
+			brushPlaced.row = row;
+			strokes.addChild(brushPlaced);
+		} else {
+			if (brushPlaced.bounds.right > project.view.bounds.width * 0.96) {
+				aniBrush = false;
+				// remove old brush strokes
+				if (brushPlaced.index - 4 >= 0) {
+					stroke = strokes.children[brushPlaced.index-4];
+					stroke.remove();
+					brushStack.push(stroke);
+				}
+				if (row == 3) {
+					// Screenshot
+					if (SCREENSHOT) {
+						for (i = 1; i <= MAX_POGO; i++) {
+							pogoGroup[i].visible = false;
+						}
+						pogoGroup[4].visible = true;
+						pogoGroup[4].position.x = project.view.center.x; 
+						heart.visible = true;
+						heart.position = new Point(project.view.center.x * 1.5, project.view.center.y * 0.25);
+						heart.rotation = 15;
+						dust[3].visible = true;
+						dust[3].position = new Point(project.view.center.x * 0.5, project.view.center.y * 0.75);
+						paused = true;
+					}
+					increment = -1;
+				} else if (row == 1) {
+					increment = 1;
+				}
+				row += increment;
+			} else {
+				brushPlaced.bounds.right += project.view.bounds.width / 10;
+			}
+		}
+		
+		// check for idle player
+		if (current - lastPushed > 1500) {
+			scoreChange(score - (10 * level));
+			lastPushed = current;
+		}
+	}
+	
+	// resize canvas while maintaining hd resolution
+	function resize() {
+		var point;
+		
+		clearStrokes();
+		project.view.bounds.width = window.innerWidth;
+		project.view.bounds.height = window.innerWidth / 1.77;
+		pogoScale = project.view.bounds.height / cHeight;
+		fontSize *= pogoScale;
+		wall.scale(pogoScale, pogoScale);
+		wall.position = project.view.bounds.center;
+		for (var i = 1; i <= MAX_POGO; i++) { 
+			pogoGroup[i].scale(pogoScale, pogoScale);
+			pogoGroup[i].position = project.view.bounds.topCenter;
+		}
+		hitGroup.scale(pogoScale, pogoScale);
+		hitGroup.position = project.view.bounds.topCenter;
+		
+		splash.bounds.width = project.view.bounds.width;
+		splash.bounds.height = project.view.bounds.height * 0.85;
+		splash.position = project.view.bounds.topCenter;
+		
+		point = new Point(project.view.center.x, project.view.bounds.bottom - (project.view.bounds.height * 0.075));
+		uiBar.scale(pogoScale, pogoScale);
+		uiBar.position = point;
+		playControl.scale(pogoScale, pogoScale);
+		playControl.position = point;
+		pauseControl.scale(pogoScale, pogoScale);
+		pauseControl.position = point;
+		levelControl.scale(pogoScale, pogoScale);
+		point.x = project.view.center.x - levelControl.bounds.width - 10;
+		levelControl.position = point;
+		levelText.scale(pogoScale, pogoScale);
+		levelText.point = levelControl.bounds.center;
+		levelText.position.y += (fontSize * 2.25) / 3;
+		musicOnControl.scale(pogoScale, pogoScale);
+		point.x = project.view.center.x + musicOnControl.bounds.width + 10;
+		musicOnControl.position = point;
+		musicOffControl.scale(pogoScale, pogoScale);
+		musicOffControl.position = point;
+		recycleControl.scale(pogoScale, pogoScale);
+		point.x = levelControl.bounds.center.x - recycleControl.bounds.width - 10;
+		recycleControl.position = point;
+		infoControl.scale(pogoScale, pogoScale);
+		point.x = musicOnControl.bounds.center.x + infoControl.bounds.width + 10;
+		infoControl.position = point;
+		timeText.scale(pogoScale, pogoScale);
+		timeText.point = uiBar.bounds.leftCenter;
+		timeText.position.y += (fontSize * 2.25) / 2;
+		scoreText.scale(pogoScale, pogoScale);
+		scoreText.point = uiBar.bounds.rightCenter;
+		scoreText.position.y += (fontSize * 2.25) / 2;
+		
+		reset();
+		
+		cHeight = project.view.bounds.height;
+		project.view.update(true);
+	}
+	
+	// clear brush strokes upon game pause
+	function clearStrokes() {
+		strokes.removeChildren();
+		brushStack = [];
+		brushRow = [];
+		row = 1;
+		increment = 1;
+		aniBrush = false;
+		decay = 0;
+	}
+	
+	function audioStop(sound) {
+		sound.pause();
+		sound.currentTime = 0;
+	}
+	
+	// start game play
+	function unpause() {
+		var date = new Date();
+		
+		splash.visible = false;
+		if (isAudio) {
+			gameAudio.play();
+		}
+/*		blushedText.visible = false;
+		fadedText.visible = false;*/
+		if (timeText.content == 60) {
+			setWalls(0, 0);
+		}
+		paused = false;
+		bounce = 0;
+		lastPushed = date.getTime();
+		start.setTime(date.getTime() - (60000 - timeText.content * 1000));
+		playControl.visible = false;
+		pauseControl.visible = true;
+		
+		heartBeat = 0;
+	}
+	
+	// pause game play
+	function pause() {
+		if (isAudio) {
+			gameAudio.pause();
+		}
+		paused = true;
+		clearStrokes();
+/*		removeHearts();
+		removeDust();*/
+//		canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+		project.view.update(true);
+		playControl.visible = true;
+		pauseControl.visible = false;
+		splash.visible = true;
+		splash.bringToFront();
+	}
+		
+	// on leaving game
+	window.onblur = function() {
+		pause();
+	}
+		
+	// on returning to game
+	window.onfocus = function() {
+		if (pauseControl != undefined && pauseControl.visible) {
+			unpause();
+		}
+	}
+		
+	window.onresize = function() {
+		pause();
+		resize();
+	}
+	
+    </script>
+</head>
+<body>
+    <canvas style="background-color:#000000;" id="canvas" resize></canvas>
+</body>
+</html>
