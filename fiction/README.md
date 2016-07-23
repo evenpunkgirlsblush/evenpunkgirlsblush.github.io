@@ -1,0 +1,1 @@
+The e-books in this folder may be freely read and distributed, but, unlike the software in this repository, they may not be modified or used commercially in any manner, and their full rights remain exclusive to the copyright holder.
