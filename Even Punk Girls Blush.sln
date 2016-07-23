@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2015
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Even Punk Girls Blush.CSharp.Plugins", "Even Punk Girls Blush.CSharp.Plugins.csproj", "{4E406CC6-29C2-D4A8-59C2-4ED18722E532}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Even Punk Girls Blush.CSharp", "Even Punk Girls Blush.CSharp.csproj", "{A0CDE1DE-A990-274D-5D37-361E6F07765C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Even Punk Girls Blush.CSharp.Editor.Plugins", "Even Punk Girls Blush.CSharp.Editor.Plugins.csproj", "{C42EA8D0-3891-35B8-ED5A-44394959A98E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Even Punk Girls Blush.CSharp.Editor", "Even Punk Girls Blush.CSharp.Editor.csproj", "{591D78E9-11D9-7193-C1EA-3A306A8DB2C6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4E406CC6-29C2-D4A8-59C2-4ED18722E532}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E406CC6-29C2-D4A8-59C2-4ED18722E532}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E406CC6-29C2-D4A8-59C2-4ED18722E532}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E406CC6-29C2-D4A8-59C2-4ED18722E532}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A0CDE1DE-A990-274D-5D37-361E6F07765C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0CDE1DE-A990-274D-5D37-361E6F07765C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0CDE1DE-A990-274D-5D37-361E6F07765C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0CDE1DE-A990-274D-5D37-361E6F07765C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C42EA8D0-3891-35B8-ED5A-44394959A98E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C42EA8D0-3891-35B8-ED5A-44394959A98E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C42EA8D0-3891-35B8-ED5A-44394959A98E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C42EA8D0-3891-35B8-ED5A-44394959A98E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{591D78E9-11D9-7193-C1EA-3A306A8DB2C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{591D78E9-11D9-7193-C1EA-3A306A8DB2C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{591D78E9-11D9-7193-C1EA-3A306A8DB2C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{591D78E9-11D9-7193-C1EA-3A306A8DB2C6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
