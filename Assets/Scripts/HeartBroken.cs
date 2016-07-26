@@ -17,7 +17,7 @@ public class HeartBroken : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-        heartScale = Random.Range(0f, 1000f);
+        heartScale = Random.Range(500f, 1500f);
         transform.localScale += new Vector3(heartScale, 0, heartScale);
         heartScale = transform.localScale.x;
         heartBeatScale = heartScale * 1.25f;
@@ -32,7 +32,7 @@ public class HeartBroken : MonoBehaviour {
 		heartBeat = 1;
 		shrink = false;
 
-		heartTime = Instantiate(heartTimePrefab, transform.localPosition + new Vector3(-0.025f, 0f, -0.4f), Quaternion.Euler(90, 0, 0)) as GameObject;
+		heartTime = Instantiate(heartTimePrefab, transform.localPosition + new Vector3(0f, 0f, -0.5f), Quaternion.Euler(90, 0, 0)) as GameObject;
 	}
 
 	// Update is called once per frame

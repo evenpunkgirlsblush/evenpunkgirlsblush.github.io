@@ -71,6 +71,11 @@ public class Heart : MonoBehaviour {
 				} else if (hitCount == 5) {
 					pogoHit.transform.Rotate(new Vector3(0f, 3f, 0f));
 				}*/
+				if (transform.localScale.x < 1500) {
+					transform.localScale -= new Vector3(0f, 0f, 0f);
+				} else {
+					transform.localScale -= new Vector3(1500f, 0f, 1500f);
+				}
 				hitCount++;
 			}
 		} else {
@@ -85,8 +90,8 @@ public class Heart : MonoBehaviour {
 				if (Physics.CheckSphere(transform.position, heartSize / 3)) {
 					hit = true;
 					pogoHit = Instantiate(hitPrefab, new Vector3(0f, 0f, -4f), Quaternion.Euler(0f, 180f, 0)) as GameObject;
-					pogoHit.transform.localScale = new Vector3(3254f, 0f, 3254f);
 					pogoHit.transform.localPosition = pogo.transform.localPosition;
+					pogoHit.transform.localScale = pogo.transform.localScale;
 					pogoHit.transform.Rotate(new Vector3(0f, -1f, 0f));
 					pogoController.setActive(false);
 					controller.levelEnd();
